@@ -14,7 +14,6 @@ RUN export JAVA_HOME
 
 USER airflow
 
-# Install dependencies (tanpa Spark)
 RUN pip install \
     lxml \
     requests==2.31 \
@@ -24,7 +23,6 @@ RUN pip install \
     python-Levenshtein==0.26.1 \
     apache-airflow-providers-google==10.13.1
 
-# Copy DAGs folder (dipisah dari pip install)
 COPY /dags /opt/airflow/dags
 COPY resources /opt/airflow/resources
 
