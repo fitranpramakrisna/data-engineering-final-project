@@ -21,7 +21,8 @@ RUN pip install \
     pandas==1.2.4 \
     beautifulsoup4==4.13.3 \
     fuzzywuzzy==0.18.0 \
-    python-Levenshtein==0.26.1
+    python-Levenshtein==0.26.1 \
+    apache-airflow-providers-google==10.13.1
 
 # Copy DAGs folder (dipisah dari pip install)
 COPY /dags /opt/airflow/dags
