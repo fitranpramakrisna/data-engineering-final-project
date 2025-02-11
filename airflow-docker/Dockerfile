@@ -19,7 +19,11 @@ RUN pip install \
     lxml \
     requests==2.31 \
     pandas==1.2.4 \
-    beautifulsoup4==4.13.3
+    beautifulsoup4==4.13.3 \
+    fuzzywuzzy==0.18.0 \
+    python-Levenshtein==0.26.1
 
 # Copy DAGs folder (dipisah dari pip install)
 COPY /dags /opt/airflow/dags
+COPY resources /opt/airflow/resources
+
