@@ -21,7 +21,9 @@ RUN pip install \
     beautifulsoup4==4.13.3 \
     fuzzywuzzy==0.18.0 \
     python-Levenshtein==0.26.1 \
-    apache-airflow-providers-google==10.13.1
+    apache-airflow-providers-google==10.13.1 \
+    python-dotenv==1.0.1
+    # pandas-gbq==0.27.0
 
 COPY /dags /opt/airflow/dags
 COPY resources /opt/airflow/resources
