@@ -216,7 +216,7 @@ def extract_web_dealls():
             if stop:
                 break
             
-            page += batch_size  # Loncat batch_size halaman
+            page += batch_size  
 
     df = pd.DataFrame(all_jobs)
     print(f"total baris : {df.shape[0]}")
