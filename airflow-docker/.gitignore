@@ -2,3 +2,4 @@ dags/__pycache__
 resources/config/gcp
 logs/*
 config/gcp/*
+resources/scripts/__pycache__
