@@ -20,7 +20,8 @@ def extract_web_kalibrr():
         "education_min_lvl": [],
         "industry": [],
         "min_salary": [],
-        "max_salary": []
+        "max_salary": [],
+        "source_job":[]
     }
 
     # Fungsi untuk mengambil data berdasarkan offset
@@ -45,7 +46,8 @@ def extract_web_kalibrr():
                 "education_min_lvl": [],
                 "industry": [],
                 "min_salary": [],
-                "max_salary": []
+                "max_salary": [],
+                "source_job":[]
             }
 
             for job in jobs:
@@ -87,7 +89,7 @@ def extract_web_kalibrr():
                 extracted_jobs["min_salary"].append(job.get("base_salary") if job.get("base_salary") is not None else "N/A")
                 # extracted_jobs["max_salary"].append(job.get("maximum_salary", "N/A"))
                 extracted_jobs["max_salary"].append(job.get("maximum_salary") if job.get("maximum_salary") is not None else "N/A")
-
+                extracted_jobs["source_job"].append("Kalibrr")
 
             return extracted_jobs
         return None
@@ -115,6 +117,7 @@ def extract_web_kalibrr():
 
     # Konversi dictionary ke DataFrame Pandas
     df = pd.DataFrame(all_jobs)
+    print(df.columns)
     print(f"total baris : {df.shape[0]}")
     df = df.to_json()
     # print(df)
