@@ -21,7 +21,8 @@ def extract_web_dealls():
         "education_min_lvl": [],
         "industry": [],
         "min_salary": [],
-        "max_salary": []
+        "max_salary": [],
+        "source_job": []
     }
 
     def fetch_jobs(page, category):
@@ -45,7 +46,7 @@ def extract_web_dealls():
                     try:
                         job_posted_dt = datetime.strptime(job_posted_raw[:10], "%Y-%m-%d")
                         if job_posted_dt < date_threshold:
-                            continue  # Skip data yang lebih lama dari 2024-12-01
+                            continue  # Skip data yang lebih lama dari 2024-01-01
                         job_posted_date = job_posted_dt.strftime("%Y-%m-%d")
                     except ValueError:
                         pass  # Jika format tanggal salah, biarkan sebagai "N/A"
@@ -58,17 +59,15 @@ def extract_web_dealls():
                 extracted_jobs["level_experience"].append(job.get("candidatePreference", {}).get("lastEducations", []))
                 extracted_jobs["education_min_lvl"].append("S1" if extracted_jobs["job_type"][-1] in {"contract", "fullTime"} else "SMA")
                 extracted_jobs["industry"].append(job.get("company", {}).get("sector", "N/A"))
+                extracted_jobs["source_job"].append("Dealls")
                 
-                if not job.get("salaryRange", []):
-                    # max_salary = min_salary = 'Undisclosed'
-                    extracted_jobs["min_salary"].append( "N/A")
-                    extracted_jobs["max_salary"].append( "N/A")
-                else: 
-                    # min_salary = job.get("salaryRange", []).get("start", "N/A")
-                    # max_salary = job.get("salaryRange", []).get("end", "N/A")
-                # salary_range = job.get("salaryRange", [])
-                    extracted_jobs["min_salary"].append(job.get("salaryRange", []).get("start", "N/A"))
-                    extracted_jobs["max_salary"].append(job.get("salaryRange", []).get("end", "N/A"))
+                salary_range = job.get("salaryRange", [])
+                if not salary_range:
+                    extracted_jobs["min_salary"].append("N/A")
+                    extracted_jobs["max_salary"].append("N/A")
+                else:
+                    extracted_jobs["min_salary"].append(salary_range.get("start", "N/A"))
+                    extracted_jobs["max_salary"].append(salary_range.get("end", "N/A"))
             
             return extracted_jobs
         return None
@@ -95,10 +94,10 @@ def extract_web_dealls():
             page += batch_size  
 
     df = pd.DataFrame(all_jobs)
+    
     print(f"total baris : {df.shape[0]}")
     
-    # return df.to_json()
-    df = df.to_json()
-    # print(df)
-    return df
-    # print(df)
+    # print(f"Total duplikat: {df.duplicated().sum()}")
+    print(df.columns)
+    
+    return df.to_json()
