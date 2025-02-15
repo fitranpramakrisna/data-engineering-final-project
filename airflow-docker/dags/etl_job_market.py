@@ -1,6 +1,8 @@
 import sys
 import pandas as pd
 import pytz
+from dotenv import load_dotenv
+import os
 from datetime import datetime
 sys.path.append("/opt/airflow")
 
@@ -12,6 +14,8 @@ from resources.scripts.transform_dealls import tranform_web_dealls
 from resources.scripts.transform_kalibrr import tranform_web_kalibrr
 from resources.scripts.mapping_industry import industry_mapping  
 from google.oauth2 import service_account
+
+load_dotenv()
 
 
 # to map and normalize the industry name
@@ -31,21 +35,23 @@ def etl_job_market():
     end_task = EmptyOperator(task_id="end_task")
 
     sources = {
+        
         "kalibrr": (extract_web_kalibrr, tranform_web_kalibrr),
         "dealls": (extract_web_dealls, tranform_web_dealls),
+        
     }
 
     extract_tasks = {}
     transform_tasks = {}
-
+    
     for source_name, (extract_func, transform_func) in sources.items():
         @task(task_id=f"extract_{source_name}")
-        def extract():
-            return extract_func()
+        def extract(extract_f=extract_func):
+            return extract_f()
 
         @task(task_id=f"transform_{source_name}")
-        def transform(data):
-            return transform_func(data)
+        def transform(data, transform_f=transform_func):
+            return transform_f(data)
 
         extract_task = extract()
         transform_task = transform(extract_task)
@@ -54,6 +60,23 @@ def etl_job_market():
         transform_tasks[source_name] = transform_task
 
         start_task >> extract_task >> transform_task
+
+    # for source_name, (extract_func, transform_func) in sources.items():
+    #     @task(task_id=f"extract_{source_name}")
+    #     def extract():
+    #         return extract_func()
+
+    #     @task(task_id=f"transform_{source_name}")
+    #     def transform(data):
+    #         return transform_func(data)
+
+    #     extract_task = extract()
+    #     transform_task = transform(extract_task)
+
+    #     extract_tasks[source_name] = extract_task
+    #     transform_tasks[source_name] = transform_task
+
+    #     start_task >> extract_task >> transform_task
 
     # Task to do merge tables
     @task(task_id="merge_transformed_data")
@@ -69,9 +92,10 @@ def etl_job_market():
         print(merged_df.head())
         print(f"total baris : {merged_df.shape}")
         
-        merged_df["id"] = [str(uuid.uuid4()) for _ in range(len(merged_df))]
+        # merged_df["id"] = [str(uuid.uuid4()) for _ in range(len(merged_df))]
         
         merged_df['industry'] = merged_df['industry'].apply(normalize_industry)
+        merged_df = merged_df.drop_duplicates()
         
         merged_df.to_csv('./resources/csv/job_market.csv', index=False)
 
@@ -82,6 +106,11 @@ def etl_job_market():
     
     @task(task_id="load_to_bigquery")
     def load_to_bigquery():
+        
+        project_id = os.getenv("BIGQUERY_PROJECT_ID")
+        dataset_id = os.getenv("BIGQUERY_DATASET_ID")
+        table_id = os.getenv("BIGQUERY_TABLE_ID")
+        
         credentials = service_account.Credentials.from_service_account_file('/opt/airflow/resources/config/gcp/service_account.json')
         df = pd.read_csv('./resources/csv/job_market.csv')
         df.to_gbq(destination_table='job_market.jobs_detail', project_id='final-project-data-engineer', credentials=credentials, if_exists='replace')
