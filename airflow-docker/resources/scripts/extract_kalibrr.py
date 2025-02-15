@@ -7,7 +7,7 @@ def extract_web_kalibrr():
     base_url = "https://www.kalibrr.com/kjs/job_board/search"
     limit = 15
     batch_size = 5  # Jumlah request yang dilakukan secara paralel
-    date_threshold = datetime.strptime("2024-12-01", "%Y-%m-%d")  # Batas tanggal
+    date_threshold = datetime.strptime("2024-01-01", "%Y-%m-%d")  # Batas tanggal
 
     # Dictionary untuk menyimpan hasil
     all_jobs = {
