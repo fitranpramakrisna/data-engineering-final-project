@@ -12,15 +12,23 @@ from resources.scripts.extract_kalibrr import extract_web_kalibrr
 from resources.scripts.extract_dealls import extract_web_dealls
 from resources.scripts.transform_dealls import tranform_web_dealls
 from resources.scripts.transform_kalibrr import tranform_web_kalibrr
-from resources.scripts.mapping_industry import industry_mapping  
+from resources.scripts.mapping_industry import industry_mapping 
+from resources.scripts.mapping_job_title import job_title_mapping
+ 
 from google.oauth2 import service_account
 
 load_dotenv()
 
 
-# to map and normalize the industry name
+# to map and normalize the industry name and job title
 def normalize_industry(industry):
     return industry_mapping.get(industry, industry)
+
+def normalize_job_title(title):
+    for key, values in job_title_mapping.items():
+        if title in values:
+            return key
+    return title
 
 @dag(
     dag_id="etl_job_market",
@@ -35,10 +43,8 @@ def etl_job_market():
     end_task = EmptyOperator(task_id="end_task")
 
     sources = {
-        
         "kalibrr": (extract_web_kalibrr, tranform_web_kalibrr),
-        "dealls": (extract_web_dealls, tranform_web_dealls),
-        
+        "dealls": (extract_web_dealls, tranform_web_dealls)
     }
 
     extract_tasks = {}
@@ -61,45 +67,22 @@ def etl_job_market():
 
         start_task >> extract_task >> transform_task
 
-    # for source_name, (extract_func, transform_func) in sources.items():
-    #     @task(task_id=f"extract_{source_name}")
-    #     def extract():
-    #         return extract_func()
-
-    #     @task(task_id=f"transform_{source_name}")
-    #     def transform(data):
-    #         return transform_func(data)
-
-    #     extract_task = extract()
-    #     transform_task = transform(extract_task)
-
-    #     extract_tasks[source_name] = extract_task
-    #     transform_tasks[source_name] = transform_task
-
-    #     start_task >> extract_task >> transform_task
-
     # Task to do merge tables
     @task(task_id="merge_transformed_data")
     def merge_table_task(kalibrr_data, dealls_data):
-        
-        import uuid
-        
+
         kalibrr_df = pd.read_json(kalibrr_data)
         dealls_df = pd.read_json(dealls_data)
-        print(f"total baris kalibr : {kalibrr_df.shape}")
-        print(f"total baris dealls : {dealls_df.shape}")
+
         merged_df = pd.concat([kalibrr_df, dealls_df], ignore_index=True)
-        print(merged_df.head())
-        print(f"total baris : {merged_df.shape}")
-        
-        # merged_df["id"] = [str(uuid.uuid4()) for _ in range(len(merged_df))]
-        
-        merged_df['industry'] = merged_df['industry'].apply(normalize_industry)
         merged_df = merged_df.drop_duplicates()
+        
+        merged_df['job_title'] = merged_df['job_title'].apply(normalize_job_title)
+        merged_df['industry'] = merged_df['industry'].apply(normalize_industry)
         
         merged_df.to_csv('./resources/csv/job_market.csv', index=False)
 
-        return f"Data save"
+        return "Data saved"
         
 
     merged_table_task = merge_table_task(transform_tasks["kalibrr"], transform_tasks["dealls"])
@@ -107,9 +90,9 @@ def etl_job_market():
     @task(task_id="load_to_bigquery")
     def load_to_bigquery():
         
-        project_id = os.getenv("BIGQUERY_PROJECT_ID")
-        dataset_id = os.getenv("BIGQUERY_DATASET_ID")
-        table_id = os.getenv("BIGQUERY_TABLE_ID")
+        # project_id = os.getenv("BIGQUERY_PROJECT_ID")
+        # dataset_id = os.getenv("BIGQUERY_DATASET_ID")
+        # table_id = os.getenv("BIGQUERY_TABLE_ID")
         
         credentials = service_account.Credentials.from_service_account_file('/opt/airflow/resources/config/gcp/service_account.json')
         df = pd.read_csv('./resources/csv/job_market.csv')
