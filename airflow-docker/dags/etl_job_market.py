@@ -76,7 +76,11 @@ def etl_job_market():
 
         merged_df = pd.concat([kalibrr_df, dealls_df], ignore_index=True)
         merged_df = merged_df.drop_duplicates()
-        
+        merged_df['job_type'] = merged_df['job_type'].str.lower()
+        merged_df['job_type'] = merged_df['job_type'].replace({
+        'contract': 'contractual',
+        'fulltime': 'full time'
+        })
         merged_df['job_title'] = merged_df['job_title'].apply(normalize_job_title)
         merged_df['industry'] = merged_df['industry'].apply(normalize_industry)
         
