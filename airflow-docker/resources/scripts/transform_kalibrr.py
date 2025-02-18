@@ -4,7 +4,8 @@ def tranform_web_kalibrr(df):
     df = pd.read_json(df)
     
     df['city'] = df['city'].apply(lambda x: 'Jakarta' if isinstance(x, str) and 'Jakarta' in x else x)
-    df['city'] = df['city'].str.replace(r'\b(Regency|Kota)\b', '', regex=True).str.strip()
+    df['city'] = df['city'].apply(lambda x: 'Tangerang' if isinstance(x, str) and 'Tangerang' in x else x)
+    df['city'] = df['city'].str.replace(r'\b(Regency|Kota|Kabupaten)\b', '', regex=True).str.strip()
     
     # standarisasi level_education
     education_mapping = {
