@@ -1,8 +1,6 @@
 import sys
 import pandas as pd
 import pytz
-from dotenv import load_dotenv
-import os
 from datetime import datetime
 sys.path.append("/opt/airflow")
 
@@ -16,9 +14,6 @@ from resources.scripts.mapping_industry import industry_mapping
 from resources.scripts.mapping_job_title import job_title_mapping
  
 from google.oauth2 import service_account
-
-load_dotenv()
-
 
 # to map and normalize the industry name and job title
 def normalize_industry(industry):
@@ -88,20 +83,15 @@ def etl_job_market():
 
         return "Data saved"
         
-
     merged_table_task = merge_table_task(transform_tasks["kalibrr"], transform_tasks["dealls"])
     
     @task(task_id="load_to_bigquery")
     def load_to_bigquery():
         
-        # project_id = os.getenv("BIGQUERY_PROJECT_ID")
-        # dataset_id = os.getenv("BIGQUERY_DATASET_ID")
-        # table_id = os.getenv("BIGQUERY_TABLE_ID")
-        
         credentials = service_account.Credentials.from_service_account_file('/opt/airflow/resources/config/gcp/service_account.json')
         df = pd.read_csv('./resources/csv/job_market.csv')
         df.to_gbq(destination_table='job_market.jobs_detail', project_id='final-project-data-engineer', credentials=credentials, if_exists='replace')
-        
+
         
     load_to_bigquery_task = load_to_bigquery()
     
