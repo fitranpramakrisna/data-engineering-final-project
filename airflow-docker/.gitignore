@@ -1,3 +1,4 @@
+.env
 dags/__pycache__
 resources/config/gcp
 logs/*
