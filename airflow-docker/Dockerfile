@@ -20,7 +20,7 @@ RUN pip install \
     pandas==1.2.4 \
     beautifulsoup4==4.13.3 \
     apache-airflow-providers-google==10.13.1 \
-    python-dotenv==1.0.1 \
+    scikit-learn==1.6.1
 
 COPY /dags /opt/airflow/dags
 COPY resources /opt/airflow/resources
