@@ -6,8 +6,8 @@ from datetime import datetime
 def extract_web_kalibrr():
     base_url = "https://www.kalibrr.com/kjs/job_board/search"
     limit = 15
-    batch_size = 5  # Jumlah request yang dilakukan secara paralel
-    date_threshold = datetime.strptime("2024-01-01", "%Y-%m-%d")  # Batas tanggal
+    batch_size = 5  # Total pages extracted each iteration
+    date_threshold = datetime.strptime("2024-01-01", "%Y-%m-%d")  # date treshold (2024/01/01 - now)
 
     # Dictionary untuk menyimpan hasil
     all_jobs = {
@@ -82,12 +82,7 @@ def extract_web_kalibrr():
                 extracted_jobs["level_experience"].append(job.get("work_experience", "N/A"))
                 extracted_jobs["education_min_lvl"].append(job.get("education_level", "N/A"))
                 extracted_jobs["industry"].append(job.get("company", {}).get("industry", "N/A"))
-                
-                
-                
-                # extracted_jobs["min_salary"].append(job.get("base_salary", "N/A"))
                 extracted_jobs["min_salary"].append(job.get("base_salary") if job.get("base_salary") is not None else "N/A")
-                # extracted_jobs["max_salary"].append(job.get("maximum_salary", "N/A"))
                 extracted_jobs["max_salary"].append(job.get("maximum_salary") if job.get("maximum_salary") is not None else "N/A")
                 extracted_jobs["source_job"].append("Kalibrr")
 
@@ -115,46 +110,7 @@ def extract_web_kalibrr():
         
         offset += batch_size * limit  # Loncat batch_size halaman
 
-    # Konversi dictionary ke DataFrame Pandas
     df = pd.DataFrame(all_jobs)
-    print(df.columns)
-    print(f"total baris : {df.shape[0]}")
     df = df.to_json()
-    # print(df)
+    
     return df
-    # print(df)
-
-# print(df)
-
-# def transform(df):
-    # standarisasi nama kota
-    # df['city'] = df['city'].apply(lambda x: 'Jakarta' if 'Jakarta' in x else x)
-    # df['city'] = df['city'].str.replace(r'\b(Regency|Kota)\b', '', regex=True).str.strip()
-    
-    #standarisasi level_education
-#     education_mapping = {
-#     550: 'S1',
-#     200: 'SMA',
-#     350: 'D3',
-#     450: 'D3'
-# }
-
-#     df['education_min_lvl'] = df['education_min_lvl'].map(education_mapping).fillna('Other')
-    
-    #standarisasi level_experience
-    # working_lvl_experience_mapping = {
-    #     200: 'Freshgrad / Junior',
-    #     400: 'Mid-Senior Level Manager',
-    #     300: 'Supervisor / Asisten Manager',
-    #     100: 'Intern'
-
-    # }
-    
-    # df['level_experience'] = df['level_experience'].map(working_lvl_experience_mapping).fillna('Other')
-    # print(df['min_salary'].unique())
-    # print(df['max_salary'].unique())
-    
-    # return df.to_excel('transformed_kalibrr.xlsx', index=False)
-
-# df = extract()
-# transform(df)
