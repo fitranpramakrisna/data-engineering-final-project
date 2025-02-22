@@ -19,11 +19,31 @@ from google.oauth2 import service_account
 def normalize_industry(industry):
     return industry_mapping.get(industry, industry)
 
-def normalize_job_title(title):
-    for key, values in job_title_mapping.items():
-        if title in values:
-            return key
-    return title
+# mapping job title using Tfidf Vectorizer with mapping data from 'mapping_job_title.py'
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Data job title
+categories = list(job_title_mapping.keys())
+all_titles = [title for titles in job_title_mapping.values() for title in titles]
+
+# TF-IDF vektor
+vectorizer = TfidfVectorizer(ngram_range=(1,2)).fit(all_titles)
+
+def categorize_job_title(job_title):
+    new_vector = vectorizer.transform([job_title])
+    job_vectors = vectorizer.transform(all_titles)
+    
+    # Hitung cosine similarity
+    similarity_scores = cosine_similarity(new_vector, job_vectors).flatten()
+    best_match_idx = similarity_scores.argmax()
+    
+    # Jika skor di atas threshold, return kategori
+    if similarity_scores[best_match_idx] > 0.4:
+        for category, titles in job_title_mapping.items():
+            if all_titles[best_match_idx] in titles:
+                return category
+    return job_title
 
 @dag(
     dag_id="etl_job_market",
@@ -76,7 +96,7 @@ def etl_job_market():
         'contract': 'contractual',
         'fulltime': 'full time'
         })
-        merged_df['job_title'] = merged_df['job_title'].apply(normalize_job_title)
+        merged_df['job_title'] = merged_df['job_title'].apply(categorize_job_title)
         merged_df['industry'] = merged_df['industry'].apply(normalize_industry)
         
         merged_df.to_csv('./resources/csv/job_market.csv', index=False)
