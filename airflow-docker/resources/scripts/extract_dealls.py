@@ -95,9 +95,4 @@ def extract_web_dealls():
 
     df = pd.DataFrame(all_jobs)
     
-    print(f"total baris : {df.shape[0]}")
-    
-    # print(f"Total duplikat: {df.duplicated().sum()}")
-    print(df.columns)
-    
     return df.to_json()
