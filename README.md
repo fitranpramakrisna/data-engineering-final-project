@@ -26,4 +26,4 @@ This folder contains 4 folders that work together to tailor the function of dag 
 - `transform_dealls.py`, python script to transform the extracted data from Dealls
 - `transform_kalibrr.py`, python script to transform the extracted data from Kalibrr
 
-To visit the end product (the dashboad) you can visit this link [halo](https://lookerstudio.google.com/reporting/3a3cade2-f0c1-4613-b937-1221ece8b816)
+To visit the end product (the dashboad) you can visit this link [Dashboard](https://lookerstudio.google.com/reporting/3a3cade2-f0c1-4613-b937-1221ece8b816)
