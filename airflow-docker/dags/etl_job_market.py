@@ -108,6 +108,7 @@ def etl_job_market():
     @task(task_id="load_to_bigquery")
     def load_to_bigquery():
         
+        # connect to bigquery using service account
         credentials = service_account.Credentials.from_service_account_file('/opt/airflow/resources/config/gcp/service_account.json')
         df = pd.read_csv('./resources/csv/job_market.csv')
         df.to_gbq(destination_table='job_market.jobs_detail', project_id='final-project-data-engineer', credentials=credentials, if_exists='replace')
