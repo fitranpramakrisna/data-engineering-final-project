@@ -1,5 +1,13 @@
 # Indonesian Tech Job Market Analysis
 This is an end-to-end data engineering project that builds a data pipeline for the Indonesian tech job market. The processed data is used to create a dashboard in Looker Studio. The ETL process runs using batch processing, scheduled daily at 10:00 AM.
+![image](https://github.com/user-attachments/assets/4b1c3259-fdbf-44d5-a4a4-ceb94061ab06)
+
+# Tools:
+1. Docker
+2. Airflow
+3. Python
+4. Google BigQuery
+5. Looker Studio
 
 ### How to set up docker
 1. Clone this repo
