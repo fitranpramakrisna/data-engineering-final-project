@@ -99,7 +99,14 @@ def etl_job_market():
         merged_df['job_title'] = merged_df['job_title'].apply(categorize_job_title)
         merged_df['industry'] = merged_df['industry'].apply(normalize_industry)
         
-        merged_df.to_csv('./resources/csv/job_market.csv', index=False)
+        # merged_df['min_salary'] = pd.to_numeric(merged_df['min_salary'], errors='coerce')  # ubah semua ke float/int, yang gagal jadi NaN
+
+        merged_df[['min_salary', 'max_salary']] = merged_df[['min_salary', 'max_salary']].apply(pd.to_numeric, errors='coerce')
+
+        
+        # merged_df.to_csv('./resources/csv/job_market.csv', index=False)
+        merged_df.to_parquet('./resources/parquet/job_market.parquet')
+
 
         return "Data saved"
         
