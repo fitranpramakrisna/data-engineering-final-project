@@ -2,13 +2,14 @@ def extract_web_dealls():
     import requests
     import pandas as pd
     from concurrent.futures import ThreadPoolExecutor
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     base_url = "https://api.sejutacita.id/v1/explore-job/job"
     categories = ["it-and-engineering", "data-and-product"]
-    batch_size = 5  # Jumlah request yang dilakukan secara paralel
-
-    date_threshold = datetime.strptime("2024-01-01", "%Y-%m-%d")  # Batas tanggal
+    batch_size = 5 
+    
+    date_threshold = datetime.now() - timedelta(days=365)
+    
 
     # Dictionary untuk menyimpan hasil
     all_jobs = {

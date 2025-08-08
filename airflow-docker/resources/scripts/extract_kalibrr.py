@@ -1,13 +1,13 @@
 import requests
 import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def extract_web_kalibrr():
     base_url = "https://www.kalibrr.com/kjs/job_board/search"
     limit = 15
     batch_size = 5  # Total pages extracted each iteration
-    date_threshold = datetime.strptime("2024-01-01", "%Y-%m-%d")  # date treshold (2024/01/01 - now)
+    date_threshold = datetime.now() - timedelta(days=365)
 
     # Dictionary untuk menyimpan hasil
     all_jobs = {
