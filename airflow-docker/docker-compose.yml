@@ -20,6 +20,9 @@ services:
       - MINIO_ENDPOINT=${MINIO_ENDPOINT}
       - MINIO_BUCKET=${MINIO_BUCKET}
       - MINIO_FILE_KEY=${MINIO_FILE_KEY}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+    
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -52,6 +55,9 @@ services:
       - MINIO_ENDPOINT=${MINIO_ENDPOINT}
       - MINIO_BUCKET=${MINIO_BUCKET}
       - MINIO_FILE_KEY=${MINIO_FILE_KEY}
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs

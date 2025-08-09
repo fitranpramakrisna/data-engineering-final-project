@@ -11,12 +11,17 @@ sys.path.append("/opt/airflow")
 
 from airflow.decorators import dag, task
 from airflow.operators.empty import EmptyOperator
+from airflow.operators.python import PythonOperator
+from airflow.utils.context import Context
+from airflow.utils.email import send_email
 from resources.scripts.extract_kalibrr import extract_web_kalibrr
 from resources.scripts.extract_dealls import extract_web_dealls
 from resources.scripts.transform_dealls import tranform_web_dealls
 from resources.scripts.transform_kalibrr import tranform_web_kalibrr
 from resources.scripts.mapping_industry import industry_mapping 
 from resources.scripts.mapping_job_title import job_title_mapping
+from resources.scripts.alert import task_fail_alert, send_telegram_message
+
 
 from google.oauth2 import service_account
 
@@ -48,7 +53,8 @@ def categorize_job_title(job_title):
     start_date=datetime(2025, 8, 9, tzinfo=pytz.timezone("Asia/Jakarta")),
     schedule_interval="0 10 * * *",
     tags=["final_project_dibimbing"],
-    default_args={"owner": "Fitran"}
+    default_args={"owner": "Fitran", 
+                  "on_failure_callback": task_fail_alert}
 )
 def etl_job_market():
     start_task = EmptyOperator(task_id="start_task")
@@ -157,6 +163,25 @@ def etl_job_market():
             if_exists='replace',
             credentials=credentials
         )
+        
+    def notify_success(**context):
+        dag_id = context['dag'].dag_id
+        execution_date = context['execution_date']
+        message = (
+            f"✅ <b>Airflow DAG Sukses</b>\n"
+            f"<b>DAG:</b> {dag_id}\n"
+            f"<b>Execution Time:</b> {execution_date}"
+        )
+        send_telegram_message(message)
+
+    success_notify = PythonOperator(
+        task_id="notify_success",
+        python_callable=notify_success,
+        provide_context=True,
+        trigger_rule="all_success"  # hanya jalan kalau semua task upstream sukses
+    )
+
+
 
 
     # --- DEPENDENCIES ---
@@ -165,7 +190,7 @@ def etl_job_market():
 
     transform_tasks["kalibrr"] >> merged_table_task
     transform_tasks["dealls"] >> merged_table_task
-    merged_table_task >> load_to_bq_task >> end_task
+    merged_table_task >> load_to_bq_task >> end_task >> success_notify
 
 
 etl_job_market()
