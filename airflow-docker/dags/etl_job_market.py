@@ -5,7 +5,7 @@ import pytz
 from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from dotenv import load_dotenv
+import s3fs
 
 sys.path.append("/opt/airflow")
 
@@ -45,7 +45,7 @@ def categorize_job_title(job_title):
 # === DAG Definition ===
 @dag(
     dag_id="etl_job_market",
-    start_date=datetime(2025, 2, 15, tzinfo=pytz.timezone("Asia/Jakarta")),
+    start_date=datetime(2025, 8, 9, tzinfo=pytz.timezone("Asia/Jakarta")),
     schedule_interval="0 10 * * *",
     tags=["final_project_dibimbing"],
     default_args={"owner": "Fitran"}
@@ -86,6 +86,7 @@ def etl_job_market():
     def merge_table_task(kalibrr_data, dealls_data):
         import boto3
         
+        
 
         kalibrr_df = pd.read_json(kalibrr_data)
         dealls_df = pd.read_json(dealls_data)
@@ -100,45 +101,54 @@ def etl_job_market():
         merged_df['job_title'] = merged_df['job_title'].apply(categorize_job_title)
         merged_df['industry'] = merged_df['industry'].apply(normalize_industry)
         merged_df[['min_salary', 'max_salary']] = merged_df[['min_salary', 'max_salary']].apply(pd.to_numeric, errors='coerce')
-
         
-        local_path = "./resources/tmp/job_market.parquet"
-        os.makedirs(os.path.dirname(local_path), exist_ok=True)
-        
-        merged_df.to_parquet(local_path)
-        
-        load_dotenv()
         
         minio_endpoint = os.getenv("MINIO_ENDPOINT")
         minio_access_key = os.getenv("MINIO_ROOT_USER")
         minio_secret_key = os.getenv("MINIO_ROOT_PASSWORD")
         minio_bucket = os.getenv("MINIO_BUCKET")
-
-        s3 = boto3.client(
-            's3',
-            endpoint_url=f"http://{minio_endpoint}",
-            aws_access_key_id=minio_access_key,
-            aws_secret_access_key=minio_secret_key,
-            region_name='us-east-1',
-        )
+        minio_file_key = os.getenv("MINIO_FILE_KEY")
+        print(f"ini adalah nama file key nya {minio_file_key}")
         
-        s3.upload_file(local_path, minio_bucket, "job_market.parquet")
-        return "Uploaded to MinIO"
+            # --- Inisialisasi koneksi S3FS ---
+        fs = s3fs.S3FileSystem(
+            key=minio_access_key,
+            secret=minio_secret_key,
+            client_kwargs={"endpoint_url": f"http://{minio_endpoint}"}
+        )
 
+    # --- Simpan langsung ke MinIO ---
+        parquet_path = f"s3://{minio_bucket}/{minio_file_key}"
+        merged_df.to_parquet(parquet_path, filesystem=fs)
+
+        return f"Data merged & uploaded to MinIO: {parquet_path}"
+    
 
     # --- LOAD TO BIGQUERY TASK (Optional) ---
     @task(task_id="load_to_bigquery")
     def load_to_bigquery():
         from pandas_gbq import to_gbq
+        
+        minio_endpoint = os.getenv("MINIO_ENDPOINT")
+        minio_access_key = os.getenv("MINIO_ROOT_USER")
+        minio_secret_key = os.getenv("MINIO_ROOT_PASSWORD")
+        minio_bucket = os.getenv("MINIO_BUCKET")
+        minio_file_key = os.getenv("MINIO_FILE_KEY")
+        
+        fs = s3fs.S3FileSystem(
+        key=minio_access_key,
+        secret=minio_secret_key,
+        client_kwargs={"endpoint_url": f"http://{minio_endpoint}"}
+        )
+        
+        parquet_path = f"s3://{minio_bucket}/{minio_file_key}"
+        df = pd.read_parquet(parquet_path, filesystem=fs)
 
         # Credentials
         credentials = service_account.Credentials.from_service_account_file(
             '/opt/airflow/resources/config/gcp/service_account.json'
         )
-
-        # Load from CSV or Parquet
-        df = pd.read_parquet("/tmp/job_market.parquet")
-
+        
         # Upload to BQ
         to_gbq(
             dataframe=df,
