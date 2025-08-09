@@ -15,6 +15,11 @@ services:
       - POSTGRES_DW_DB=${POSTGRES_DW_DB}
       - POSTGRES_CONTAINER_NAME=${POSTGRES_CONTAINER_NAME}
       - POSTGRES_PORT=${POSTGRES_PORT}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_BUCKET=${MINIO_BUCKET}
+      - MINIO_FILE_KEY=${MINIO_FILE_KEY}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -42,6 +47,11 @@ services:
       - POSTGRES_DW_DB=${POSTGRES_DW_DB}
       - POSTGRES_CONTAINER_NAME=${POSTGRES_CONTAINER_NAME}
       - POSTGRES_PORT=${POSTGRES_PORT}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_BUCKET=${MINIO_BUCKET}
+      - MINIO_FILE_KEY=${MINIO_FILE_KEY}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
