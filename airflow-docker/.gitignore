@@ -1,6 +1,7 @@
 .env
 dags/__pycache__
 resources/config/gcp
+resources/tmp/
 logs/*
 config/gcp/*
 resources/scripts/__pycache__

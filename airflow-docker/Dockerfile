@@ -17,10 +17,12 @@ USER airflow
 RUN pip install \
     lxml \
     requests==2.31 \
-    pandas==1.2.4 \
+    pandas==1.5.3 \
     beautifulsoup4==4.13.3 \
     apache-airflow-providers-google==10.13.1 \
-    scikit-learn==1.6.1
+    scikit-learn==1.3.2 \
+    boto3==1.39.10
+
 
 COPY /dags /opt/airflow/dags
 COPY resources /opt/airflow/resources

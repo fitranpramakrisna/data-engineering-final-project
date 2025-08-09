@@ -1,7 +1,12 @@
 import sys
+import os
 import pandas as pd
 import pytz
 from datetime import datetime
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from dotenv import load_dotenv
+
 sys.path.append("/opt/airflow")
 
 from airflow.decorators import dag, task
@@ -12,39 +17,32 @@ from resources.scripts.transform_dealls import tranform_web_dealls
 from resources.scripts.transform_kalibrr import tranform_web_kalibrr
 from resources.scripts.mapping_industry import industry_mapping 
 from resources.scripts.mapping_job_title import job_title_mapping
- 
+
 from google.oauth2 import service_account
 
-# to map and normalize the industry name and job title
+
+# === Mapping Functions ===
 def normalize_industry(industry):
     return industry_mapping.get(industry, industry)
 
-# mapping job title using Tfidf Vectorizer with mapping data from 'mapping_job_title.py'
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-
-# Data job title
 categories = list(job_title_mapping.keys())
 all_titles = [title for titles in job_title_mapping.values() for title in titles]
-
-# TF-IDF vektor
-vectorizer = TfidfVectorizer(ngram_range=(1,2)).fit(all_titles)
+vectorizer = TfidfVectorizer(ngram_range=(1, 2)).fit(all_titles)
 
 def categorize_job_title(job_title):
     new_vector = vectorizer.transform([job_title])
     job_vectors = vectorizer.transform(all_titles)
-    
-    # Hitung cosine similarity
     similarity_scores = cosine_similarity(new_vector, job_vectors).flatten()
     best_match_idx = similarity_scores.argmax()
-    
-    # Jika skor di atas threshold, return kategori
+
     if similarity_scores[best_match_idx] > 0.4:
         for category, titles in job_title_mapping.items():
             if all_titles[best_match_idx] in titles:
                 return category
     return job_title
 
+
+# === DAG Definition ===
 @dag(
     dag_id="etl_job_market",
     start_date=datetime(2025, 2, 15, tzinfo=pytz.timezone("Asia/Jakarta")),
@@ -52,11 +50,11 @@ def categorize_job_title(job_title):
     tags=["final_project_dibimbing"],
     default_args={"owner": "Fitran"}
 )
-
 def etl_job_market():
     start_task = EmptyOperator(task_id="start_task")
     end_task = EmptyOperator(task_id="end_task")
 
+    # --- EXTRACT & TRANSFORM TASKS ---
     sources = {
         "kalibrr": (extract_web_kalibrr, tranform_web_kalibrr),
         "dealls": (extract_web_dealls, tranform_web_dealls)
@@ -64,7 +62,7 @@ def etl_job_market():
 
     extract_tasks = {}
     transform_tasks = {}
-    
+
     for source_name, (extract_func, transform_func) in sources.items():
         @task(task_id=f"extract_{source_name}")
         def extract(extract_f=extract_func):
@@ -82,9 +80,12 @@ def etl_job_market():
 
         start_task >> extract_task >> transform_task
 
-    # Task to do merge tables
+
+    # --- MERGE TASK ---
     @task(task_id="merge_transformed_data")
     def merge_table_task(kalibrr_data, dealls_data):
+        import boto3
+        
 
         kalibrr_df = pd.read_json(kalibrr_data)
         dealls_df = pd.read_json(dealls_data)
@@ -93,38 +94,68 @@ def etl_job_market():
         merged_df = merged_df.drop_duplicates()
         merged_df['job_type'] = merged_df['job_type'].str.lower()
         merged_df['job_type'] = merged_df['job_type'].replace({
-        'contract': 'contractual',
-        'fulltime': 'full time'
+            'contract': 'contractual',
+            'fulltime': 'full time'
         })
         merged_df['job_title'] = merged_df['job_title'].apply(categorize_job_title)
         merged_df['industry'] = merged_df['industry'].apply(normalize_industry)
-        
-        # merged_df['min_salary'] = pd.to_numeric(merged_df['min_salary'], errors='coerce')  # ubah semua ke float/int, yang gagal jadi NaN
-
         merged_df[['min_salary', 'max_salary']] = merged_df[['min_salary', 'max_salary']].apply(pd.to_numeric, errors='coerce')
 
         
-        # merged_df.to_csv('./resources/csv/job_market.csv', index=False)
-        merged_df.to_parquet('./resources/parquet/job_market.parquet')
-
-
-        return "Data saved"
+        local_path = "./resources/tmp/job_market.parquet"
+        os.makedirs(os.path.dirname(local_path), exist_ok=True)
         
-    merged_table_task = merge_table_task(transform_tasks["kalibrr"], transform_tasks["dealls"])
-    
+        merged_df.to_parquet(local_path)
+        
+        load_dotenv()
+        
+        minio_endpoint = os.getenv("MINIO_ENDPOINT")
+        minio_access_key = os.getenv("MINIO_ROOT_USER")
+        minio_secret_key = os.getenv("MINIO_ROOT_PASSWORD")
+        minio_bucket = os.getenv("MINIO_BUCKET")
+
+        s3 = boto3.client(
+            's3',
+            endpoint_url=f"http://{minio_endpoint}",
+            aws_access_key_id=minio_access_key,
+            aws_secret_access_key=minio_secret_key,
+            region_name='us-east-1',
+        )
+        
+        s3.upload_file(local_path, minio_bucket, "job_market.parquet")
+        return "Uploaded to MinIO"
+
+
+    # --- LOAD TO BIGQUERY TASK (Optional) ---
     @task(task_id="load_to_bigquery")
     def load_to_bigquery():
-        
-        # connect to bigquery using service account
-        credentials = service_account.Credentials.from_service_account_file('/opt/airflow/resources/config/gcp/service_account.json')
-        df = pd.read_csv('./resources/csv/job_market.csv')
-        df.to_gbq(destination_table='job_market.jobs_detail', project_id='final-project-data-engineer', credentials=credentials, if_exists='replace')
+        from pandas_gbq import to_gbq
 
-        
-    load_to_bigquery_task = load_to_bigquery()
-    
+        # Credentials
+        credentials = service_account.Credentials.from_service_account_file(
+            '/opt/airflow/resources/config/gcp/service_account.json'
+        )
+
+        # Load from CSV or Parquet
+        df = pd.read_parquet("/tmp/job_market.parquet")
+
+        # Upload to BQ
+        to_gbq(
+            dataframe=df,
+            destination_table='job_market.jobs_detail',
+            project_id='final-project-data-engineer',
+            if_exists='replace',
+            credentials=credentials
+        )
+
+
+    # --- DEPENDENCIES ---
+    merged_table_task = merge_table_task(transform_tasks["kalibrr"], transform_tasks["dealls"])
+    load_to_bq_task = load_to_bigquery()
+
     transform_tasks["kalibrr"] >> merged_table_task
     transform_tasks["dealls"] >> merged_table_task
-    merged_table_task >> load_to_bigquery_task >> end_task
+    merged_table_task >> load_to_bq_task >> end_task
+
 
 etl_job_market()
